@@ -129,23 +129,25 @@ class LoginWindow(QMainWindow):
 
         if self.user_type_admin.isChecked():
             if login_user(username, password, "관리자"):
-                self.open_admin_window()
+                self.open_admin_window(username)
         elif self.user_type_kiosk.isChecked():
             if login_user(username, password, "키오스크"):
                 print("Login successful")
-                self.open_kiosk_window()
+                self.open_kiosk_window(username)
 
-    def open_admin_window(self):
+    def open_admin_window(self, username):
+        print("open_admin_window - Username:", username)
+
         from adminwindow.Admin_Display import AdminDisplay
-        admin_window = AdminDisplay(username=self.username_edit.text())
-        admin_window.show()
-        self.close()
+        self.username = username
+        self.admin_window = AdminDisplay(username=self.username)
+        self.admin_window.show()  # 수정된 부분
 
-    def open_kiosk_window(self):
+    def open_kiosk_window(self,username):
         from MainWindow import MainWindow
-        print("Opening kiosk window")
+        self.username = username
         self.close()
-        self.kiosk_window = MainWindow()
+        self.kiosk_window = MainWindow(username=self.username)
         self.kiosk_window.show()
 
 
