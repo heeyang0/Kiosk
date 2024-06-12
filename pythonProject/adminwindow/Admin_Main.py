@@ -7,12 +7,33 @@ from PyQt5.QtWidgets import *
 import mysql.connector
 
 
-class AdminMainWindow(QMainWindow):
-    def __init__(self,username=None, parent=None):
+def get_manager_key(username):
+    db_connection = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="1234",
+        database="kiosk"
+    )
+    cursor = db_connection.cursor()
 
+    # 사용자 이름을 기반으로 관리자 키 조회
+    query = "SELECT managerkey FROM users WHERE username = %s"
+    cursor.execute(query, (username,))
+
+    result = cursor.fetchone()  # 하나의 레코드 가져오기
+    manager_key = result[0] if result else None
+
+    cursor.close()
+    db_connection.close()
+
+    return manager_key
+
+class AdminMainWindow(QMainWindow):
+    def __init__(self, username=None, parent=None):
         super(AdminMainWindow, self).__init__(parent)
         self.username = username
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint)
+        self.setWindowFlags(
+            Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint)
         # 메인 텍스트 폰트
         self.mainlabelfont = QFont()
         self.mainlabelfont.setFamily(u"학교안심 우주 R")
@@ -44,10 +65,11 @@ class AdminMainWindow(QMainWindow):
         self.setupUI()
         self.AdminStackWidget.addWidget(self.PagePW)
 
-        self.db = mysql.connector.connect(host='localhost',user='root',password='1234',database="kiosk")
+        self.db = mysql.connector.connect(host='localhost', user='root', password='1234', database="kiosk")
         self.cursor = self.db.cursor()  # 커서 생성
 
-
+        # 이 부분에서 self.manager_key를 초기화해야 합니다.
+        self.manager_key = None  # manager_key 속성 초기화
 
     def setupUI(self)  :
         self.centralwidget = QWidget(self)
@@ -182,25 +204,20 @@ class AdminMainWindow(QMainWindow):
         for i in range(len(self.currentPW), 4):
             self.PWLabels[i].setText("○")  # 남은 부분은 ○ 표시
 
-
     def checkPassword(self):
-        query = "select managerkey from users where username= %s"
-        self.cursor.execute(query, (self.username,))  # 여기서 self.username을 어디서 가져오는지 확인해야 합니다.
-        result = self.cursor.fetchone()
-        if result and result[0] == self.currentPW :
+        manager_key = get_manager_key(self.username)
+
+        print("Received username:", self.username)
+        print("Received current password:", self.currentPW)
+        if self.currentPW == manager_key:  # 사용자가 입력한 비밀번호와 데이터베이스에서 가져온 관리자 키 비교
             self.LabelWrongPW.setHidden(True)
             self.clearPassword()
-            from Admin_Function import AdminFunctionWindow  # Import the AdminFunctionWindow class
-            self.admin_function_window = AdminFunctionWindow()  # Manager의 AdminFunctionWindow 클래스 인스턴스 생성
+            from Admin_Function import AdminFunctionWindow
+            self.admin_function_window = AdminFunctionWindow(username=self.username, currentPW=self.currentPW)
             self.admin_function_window.show()
-            self.close()  # 현재 창 닫기
+            self.close()
         else:
             self.LabelWrongPW.setHidden(False)
-            from Admin_Function import AdminFunctionWindow  # Import the AdminFunctionWindow class
-            self.admin_function_window = AdminFunctionWindow()  # Manager의 AdminFunctionWindow 클래스 인스턴스 생성
-            self.admin_function_window.show()
-            self.close()  # 현재 창 닫기
-
     def clearPassword(self):
         self.currentPW = ""  # 현재 입력된 비밀번호 초기화
         self.updatePWDisplay()
